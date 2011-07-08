@@ -11,21 +11,30 @@ object Redis {
 
 class Redis extends CodecFactory[Command, Reply] {
   def client = Function.const {
-    Codec.ofPipelineFactory[Command, Reply] {
-      val pipeline = Channels.pipeline()
+    new Codec[Command, Reply] {
+      def pipelineFactory = new ChannelPipelineFactory {
+        def getPipeline() = {
+          val pipeline = Channels.pipeline()
 
-      pipeline.addLast("decoder", ReplyDecoder())
-      pipeline.addLast("encoder", CommandEncoder())
-      pipeline
+          pipeline.addLast("decoder", new ReplyDecoder)
+          pipeline.addLast("encoder", new CommandEncoder)
+          pipeline
+        }
+      }
     }
   }
 
   def server = Function.const {
-    Codec.ofPipelineFactory[Command, Reply] {
-      val pipeline = Channels.pipeline()
+    new Codec[Command, Reply] {
+      def pipelineFactory = new ChannelPipelineFactory {
+        def getPipeline() = {
+          val pipeline = Channels.pipeline()
 
-      // pipeline.addLast("decoder", CommandDecoder())
-      pipeline
+          // pipeline.addLast("decoder", CommandDecoder())
+
+          pipeline
+        }
+      }
     }
   }
 }

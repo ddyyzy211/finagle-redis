@@ -2,31 +2,36 @@ package com.twitter.finagle.parser.incremental
 
 import org.jboss.netty.buffer.{ChannelBuffers, ChannelBufferIndexFinder, ChannelBuffer}
 import com.twitter.finagle.util.DelimiterIndexFinder
+import com.twitter.finagle.ParseException
 
 
 // states: continue (wait), return, error
-
-// XXX: better root class?
-class ParseFailError(msg: String) extends Exception(msg)
 
 sealed abstract class ParseResult[+Output]
 
 case class Continue[+T](next: Parser[T]) extends ParseResult[T]
 case class Return[+T](ret: T) extends ParseResult[T]
-class Error(_err: => Throwable) extends ParseResult[Nothing] {
-  lazy val err = _err
-}
+case class Throw(err: ParseException) extends ParseResult[Nothing]
 
 abstract class Parser[+Output] {
   def decode(buffer: ChannelBuffer): ParseResult[Output]
 
   def map[T](f: Output => T): Parser[T] = flatMap { t =>
-    new ConstParser(f(t))
+    try {
+      new ConstParser(f(t))
+    } catch {
+      case e: ParseException => new FailParser(e)
+    }
   }
 
   def flatMap[T](f: Output => Parser[T]): Parser[T] = {
     new FlatMapParser(this, f)
   }
+}
+
+
+class FailParser(err: ParseException) extends Parser[Nothing] {
+  def decode(buffer: ChannelBuffer) = Throw(err)
 }
 
 
@@ -38,7 +43,7 @@ class ConstParser[+T](out: T) extends Parser[T] {
 class FlatMapParser[A,+B](lhs: Parser[A], f: A => Parser[B]) extends Parser[B] {
   def decode(buffer: ChannelBuffer) = {
     lhs.decode(buffer) match {
-      case e: Error       => e
+      case e: Throw       => e
       case r: Return[A]   => f(r.ret).decode(buffer)
       case c: Continue[A] => if (c.next eq lhs) {
         Continue(this)
@@ -134,7 +139,7 @@ class AlternateParser[+T](choices: Array[(Array[Byte], Parser[T])]) extends Pars
         i = i + 1
       } while (i < choices.length)
 
-      new Error(new ParseFailError(
+      new Throw(new ParseException(
         "No match for: "+ (choices map { _._1.toString } mkString(", "))
       ))
     }

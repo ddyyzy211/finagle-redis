@@ -2,6 +2,7 @@ package com.twitter.finagle.parser.incremental
 
 import org.jboss.netty.buffer.{ChannelBuffers, ChannelBufferIndexFinder, ChannelBuffer}
 import com.twitter.finagle.util.DelimiterIndexFinder
+import com.twitter.finagle.util.DecimalIntCodec.{decode => decodeInt}
 
 
 object Parsers {
@@ -9,7 +10,7 @@ object Parsers {
 
   val readLine = readUntil("\r\n")
 
-  val readDecimalInt = readLine map { buf => parseDecimalInt(buf, buf.readableBytes) }
+  val readDecimalInt = readLine map { decodeInt(_) }
 
   val skipCRLF = skipBytes(2)
 
@@ -41,44 +42,5 @@ object Parsers {
     }
 
     go(0, Nil)
-  }
-
-  // helpers
-
-  private def pow(x: Int, p: Int) = {
-    var rv = 1
-    var j = 0
-
-    while (j < p) {
-      rv = rv * x
-      j  = j + 1
-    }
-
-    rv
-  }
-
-  private def parseDecimalInt(arr: ChannelBuffer, numBytes: Int) = {
-    val last  = numBytes - 1
-    var i     = last
-    var rv    = 0
-    var lower = 0
-    var isNegative = false
-
-    if (arr.getByte(arr.readerIndex) == '-') {
-      lower = 1
-      isNegative = true
-    } else if (arr.getByte(arr.readerIndex) == '+') {
-      lower = 1
-    }
-
-    while (i >= lower) {
-      val c = arr.getByte(arr.readerIndex + i) - 48
-
-      if (c < 0 || c > 9) throw new ParseFailError("byte out of bounds")
-      rv = rv + c * pow(10, last - i)
-      i = i - 1
-    }
-
-    if (isNegative) rv * -1 else rv
   }
 }

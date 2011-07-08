@@ -1,11 +1,18 @@
 package com.twitter.finagle.util
 
 import org.jboss.netty.buffer.{ChannelBuffers, ChannelBufferIndexFinder, ChannelBuffer}
+import com.twitter.finagle.ParseException
 
 
 object DecimalIntCodec {
   private val AsciiZero   = 48
   private val MinIntBytes = Int.MinValue.toString.getBytes("US-ASCII")
+
+  def encode(int: Int): ChannelBuffer = {
+    val rv = ChannelBuffers.buffer(11)
+    encode(int, rv)
+    rv
+  }
 
   def encode(int: Int, dest: ChannelBuffer) {
     if (int > 0) {
@@ -37,29 +44,28 @@ object DecimalIntCodec {
     }
   }
 
-  def encode(int: Int): ChannelBuffer = {
-    val rv = ChannelBuffers.buffer(11)
-    encode(int, rv)
+  def decode(buf: ChannelBuffer): Int = {
+    decode(buf, buf.readableBytes)
   }
 
-  def decode(arr: ChannelBuffer, numBytes: Int) = {
+  def decode(buf: ChannelBuffer, numBytes: Int): Int = {
     val last  = numBytes - 1
     var i     = last
     var rv    = 0
     var lower = 0
     var isNegative = false
 
-    if (arr.getByte(arr.readerIndex) == '-') {
+    if (buf.getByte(buf.readerIndex) == '-') {
       lower = 1
       isNegative = true
-    } else if (arr.getByte(arr.readerIndex) == '+') {
+    } else if (buf.getByte(buf.readerIndex) == '+') {
       lower = 1
     }
 
     while (i >= lower) {
-      val c = arr.getByte(arr.readerIndex + i) - AsciiZero
+      val c = buf.getByte(buf.readerIndex + i) - AsciiZero
 
-      if (c < 0 || c > 9) throw new ParseFailError("byte out of bounds")
+      if (c < 0 || c > 9) throw new ParseException("byte out of bounds")
       rv = rv + c * pow(10, last - i)
       i = i - 1
     }

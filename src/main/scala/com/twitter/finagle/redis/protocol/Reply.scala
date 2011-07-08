@@ -51,8 +51,6 @@ object ReplyDecoder {
     "$" -> readBulkReply,
     "*" -> readMultiBulkReply
   )
-
-  def apply() = {
-    new ParserDecoder[Reply](parser)
-  }
 }
+
+class ReplyDecoder extends ParserDecoder[Reply](ReplyDecoder.parser)
