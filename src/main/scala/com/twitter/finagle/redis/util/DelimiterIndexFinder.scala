@@ -12,15 +12,17 @@ class DelimiterIndexFinder(val delimiter: Array[Byte]) extends ChannelBufferInde
 
   val delimiterLength = delimiter.length
 
+  assert(delimiterLength > 0)
+
   def find(buffer: ChannelBuffer, guessedIndex: Int): Boolean = {
     val enoughBytes = guessedIndex + delimiterLength
     if (buffer.writerIndex < enoughBytes) return false
 
     var i = 0
-    while (i < delimiterLength) {
+    do {
       if (delimiter(i) != buffer.getByte(guessedIndex + i)) return false
       i = i + 1
-    }
+    } while (i < delimiterLength)
 
     true
   }
