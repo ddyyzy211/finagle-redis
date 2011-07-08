@@ -1,4 +1,4 @@
-package com.twitter.finagle.redis.util
+package com.twitter.finagle.util
 
 import org.jboss.netty.channel._
 import org.jboss.netty.buffer.{ChannelBuffers, ChannelBufferIndexFinder, ChannelBuffer}
