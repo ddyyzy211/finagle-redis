@@ -47,39 +47,3 @@ class CommandEncoder extends OneToOneEncoder {
     buffer
   }
 }
-
-
-// object Redis {
-//   def apply() = new Redis
-//   def get() = apply()
-// }
-
-// class Redis extends CodecFactory[Command, Reply] {
-//   def client = Function.const {
-//     Codec.ofPipelineFactory[Command, Reply] {
-//       val pipeline = Channels.pipeline()
-
-//       pipeline.addLast("decoder", new ClientDecoder)
-//       pipeline.addLast("decoding2reply", new DecodingToResponse)
-
-//       pipeline.addLast("encoder", new Encoder)
-//       pipeline.addLast("command2encoding", new CommandToEncoding)
-
-//       pipeline
-//     }
-//   }
-
-//   def server = Function.const {
-//     Codec.ofPipelineFactory[Command, Reply] {
-//       val pipeline = Channels.pipeline()
-
-//       pipeline.addLast("decoder", new ServerDecoder)
-//       pipeline.addLast("decoding2reply", new DecodingToResponse)
-
-//       pipeline.addLast("encoder", new Encoder)
-//       pipeline.addLast("command2encoding", new CommandToEncoding)
-
-//       pipeline
-//     }
-//   }
-// }

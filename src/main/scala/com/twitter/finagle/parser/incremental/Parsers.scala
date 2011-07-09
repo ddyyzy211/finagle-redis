@@ -23,11 +23,11 @@ object Parsers {
   def skipBytes(size: Int) = readBytes(size) map { _ => () }
 
   def guard[T](matcher: String)(parser: Parser[T]) = {
-    AlternateParser.stringMatchers(matcher -> parser)
+    SwitchParser.stringMatchers(matcher -> parser)
   }
 
   def choice[T](choices: (String, Parser[T])*) = {
-    AlternateParser.stringMatchers(choices: _*)
+    SwitchParser.stringMatchers(choices: _*)
   }
 
   def times[T](total: Int)(decoder: Parser[T]) = {
