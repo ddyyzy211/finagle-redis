@@ -1,4 +1,4 @@
-package com.twitter.finagle.util
+package com.twitter.finagle.parser
 
 import org.jboss.netty.buffer.{ChannelBuffers, ChannelBufferIndexFinder, ChannelBuffer}
 import com.twitter.finagle.ParseException

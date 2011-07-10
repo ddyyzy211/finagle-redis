@@ -3,7 +3,7 @@ package com.twitter.finagle.redis.protocol
 import org.jboss.netty.channel._
 import org.jboss.netty.buffer.{ChannelBuffers, ChannelBuffer}
 import org.jboss.netty.handler.codec.oneone.OneToOneEncoder
-import com.twitter.finagle.util.DecimalIntCodec.{encode => encodeInt}
+import com.twitter.finagle.parser.EncodingHelpers._
 
 
 object Command extends Enumeration {
@@ -25,13 +25,13 @@ case class Command(name: Command.Name, arguments: Array[Command.Argument])
 class CommandEncoder extends OneToOneEncoder {
   private def writeArgumentCount(buffer: ChannelBuffer, count: Int) {
     buffer.writeByte('*')
-    encodeInt(count, buffer)
+    encodeDecimalInt(count, buffer)
     buffer.writeBytes(Command.CRLF)
   }
 
   private def writeArgument(buffer: ChannelBuffer, arg: Array[Byte]) {
     buffer.writeByte('$')
-    encodeInt(arg.length, buffer)
+    encodeDecimalInt(arg.length, buffer)
     buffer.writeBytes(Command.CRLF)
   }
 

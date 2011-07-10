@@ -28,11 +28,15 @@ abstract class Parser[+Out] {
   }
 
   def orElse[T >: Out](other: Parser[T]) = {
-    new OrElseParser(this, other)
+    if (isSafe) {
+      new OrElseParser(this, other)
+    } else {
+      new BacktrackingParser(this) orElse other
+    }
   }
 
   // if true, then it is safe to assume that either parsing cannot
-  // fail, or if it does, then it does not consume any bytes
+  // normally fail, or if it does, then it does not consume any bytes
   def isSafe = true
 }
 
@@ -46,10 +50,6 @@ class ConstParser[+Out](out: Out) extends Parser[Out] {
 
 abstract class UnsafeParser[+Out] extends Parser[Out] {
   override def isSafe = false
-
-  override def orElse[T >: Out](other: Parser[T]) = {
-    new BacktrackingParser(this) orElse other
-  }
 }
 
 class FlatMapParser[A,+B](lhs: Parser[A], f: A => Parser[B]) extends UnsafeParser[B] {
@@ -90,21 +90,26 @@ class BacktrackingParser[+Out](inner: Parser[Out], offset: Int) extends Parser[O
   def this(inner: Parser[Out]) = this(inner, 0)
 
   def decode(buffer: ChannelBuffer) = {
-    val tmp = buffer.slice(buffer.readerIndex + offset, buffer.readableBytes)
+    val start = buffer.readerIndex
+
+    buffer.setReaderIndex(start + offset)
 
     // complains that Out is unchecked here, but this cannot fail, so
     // live with the warning.
-    inner.decode(tmp) match {
-      case e: Throw       => e
-      case r: Return[Out] => {
-        buffer.skipBytes(offset + tmp.readerIndex)
-        r
+    inner.decode(buffer) match {
+      case e: Throw => {
+        buffer.setReaderIndex(start)
+        e
       }
+      case r: Return[Out] => r
       case c: Continue[Out] => {
-        if (c.next == inner && tmp.readerIndex == 0) {
+        if (c.next == inner && buffer.readerIndex == (start + offset)) {
+          buffer.setReaderIndex(start)
           Continue(this)
         } else {
-          Continue(new BacktrackingParser(c.next, offset + tmp.readerIndex))
+          val newOffset = buffer.readerIndex - start
+          buffer.setReaderIndex(start)
+          Continue(new BacktrackingParser(c.next, newOffset))
         }
       }
     }

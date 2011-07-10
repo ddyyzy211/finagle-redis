@@ -12,7 +12,7 @@ object SwitchParser {
   }
 }
 
-class SwitchParser[+Out](choices: Array[(Array[Byte], Parser[Out])]) extends Parser[Out] {
+class SwitchParser[+Out](choices: Array[(Array[Byte], Parser[Out])]) extends UnsafeParser[Out] {
 
   assert(choices.length > 0)
 
