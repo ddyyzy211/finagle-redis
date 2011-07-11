@@ -20,44 +20,44 @@ case class Number(value: Long)         extends Response
 case class Value(key: ChannelBuffer, value: ChannelBuffer)
 
 
-object ResponseDecoder {
-  import Parsers._
+// object ResponseDecoder {
+//   import Parsers._
 
-  val readErrorCause = readByte map { space => //ignore
-    readLine map { bytes => Error(bytes.toString("UTF-8")) }
-  }
-
-  val readError = choice(
-    "ERROR\r\n" -> const(Error("")),
-    "SERVER_ERROR" -> readErrorCause,
-    "CLIENT_ERROR" -> readErrorCause
-  )
-
-  val readStorageResponse = choice(
-    "STORED\r\n"     -> const(Stored()),
-    "NOT_STORED\r\n" -> const(NotStored()),
-    "EXISTS\r\n"     -> const(Exists()),
-    "NOT_FOUND\r\n"  -> const(NotFound())
-  ) orElse readError
-
-  val readRetrievalResponse =
-
-  val readResponse = choice(
-    "STORED\r\n"     -> const(Stored()),
-    "NOT_STORED\r\n" -> const(NotStored()),
-    "DELETED\r\n"    -> const(Deleted()),
-    "NOT_FOUND\r\n"  -> const(NotFound()),
-    "EXISTS\r\n"     -> const(Exists())
-  )
-}
-
-
-// class Memcached extends Codec[Command, Response] {
-//   def pipelineFactory = new ChannelPipelineFactory {
-//     def getPipeline() = {
-//       val pipeline = Channels.pipeline()
-
-//       pipeline
-//     }
+//   val readErrorCause = readByte map { space => //ignore
+//     readLine map { bytes => Error(bytes.toString("UTF-8")) }
 //   }
+
+//   val readError = choice(
+//     "ERROR\r\n" -> const(Error("")),
+//     "SERVER_ERROR" -> readErrorCause,
+//     "CLIENT_ERROR" -> readErrorCause
+//   )
+
+//   val readStorageResponse = choice(
+//     "STORED\r\n"     -> const(Stored()),
+//     "NOT_STORED\r\n" -> const(NotStored()),
+//     "EXISTS\r\n"     -> const(Exists()),
+//     "NOT_FOUND\r\n"  -> const(NotFound())
+//   ) orElse readError
+
+//   val readRetrievalResponse =
+
+//   val readResponse = choice(
+//     "STORED\r\n"     -> const(Stored()),
+//     "NOT_STORED\r\n" -> const(NotStored()),
+//     "DELETED\r\n"    -> const(Deleted()),
+//     "NOT_FOUND\r\n"  -> const(NotFound()),
+//     "EXISTS\r\n"     -> const(Exists())
+//   )
 // }
+
+
+// // class Memcached extends Codec[Command, Response] {
+// //   def pipelineFactory = new ChannelPipelineFactory {
+// //     def getPipeline() = {
+// //       val pipeline = Channels.pipeline()
+
+// //       pipeline
+// //     }
+// //   }
+// // }

@@ -3,6 +3,7 @@ package com.twitter.finagle.parser.incremental
 import org.jboss.netty.buffer.{ChannelBuffers, ChannelBufferIndexFinder, ChannelBuffer}
 import com.twitter.finagle.util.DelimiterIndexFinder
 import com.twitter.finagle.parser.DecodingHelpers._
+import com.twitter.finagle.ParseException
 
 
 object Parsers {
@@ -13,6 +14,8 @@ object Parsers {
   val readDecimalInt = readLine map { decodeDecimalInt(_) }
 
   val skipCRLF = skipBytes(2)
+
+  def fail(err: ParseException) = new FailParser(err)
 
   def const[T](t: T) = new ConstParser(t)
 

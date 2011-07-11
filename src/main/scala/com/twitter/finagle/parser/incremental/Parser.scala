@@ -27,7 +27,7 @@ abstract class Parser[+Out] {
     new FlatMapParser(this, f)
   }
 
-  def orElse[T >: Out](other: Parser[T]) = {
+  def orElse[T >: Out](other: Parser[T]): Parser[T] = {
     if (isSafe) {
       new OrElseParser(this, other)
     } else {
@@ -74,10 +74,12 @@ class OrElseParser[+Out](lhs: Parser[Out], rhs: Parser[Out]) extends Parser[Out]
       case c: Continue[Out] => if (c.next eq lhs) {
         Continue(this)
       } else {
-        Continue(new OrElseParser(c.next, rhs))
+        Continue(c.next orElse rhs)
       }
     }
   }
+
+  override def isSafe = rhs.isSafe
 
   // override to be right-associative
   override def orElse[T >: Out](other: Parser[T]) = {
@@ -92,23 +94,23 @@ class BacktrackingParser[+Out](inner: Parser[Out], offset: Int) extends Parser[O
   def decode(buffer: ChannelBuffer) = {
     val start = buffer.readerIndex
 
-    buffer.setReaderIndex(start + offset)
+    buffer.readerIndex(start + offset)
 
     // complains that Out is unchecked here, but this cannot fail, so
     // live with the warning.
     inner.decode(buffer) match {
       case e: Throw => {
-        buffer.setReaderIndex(start)
+        buffer.readerIndex(start)
         e
       }
       case r: Return[Out] => r
       case c: Continue[Out] => {
         if (c.next == inner && buffer.readerIndex == (start + offset)) {
-          buffer.setReaderIndex(start)
+          buffer.readerIndex(start)
           Continue(this)
         } else {
           val newOffset = buffer.readerIndex - start
-          buffer.setReaderIndex(start)
+          buffer.readerIndex(start)
           Continue(new BacktrackingParser(c.next, newOffset))
         }
       }
