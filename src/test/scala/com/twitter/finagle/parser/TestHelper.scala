@@ -91,4 +91,8 @@ class ParserSpecification extends Specification {
   def asString(b: ChannelBuffer) = {
     b.toString(Charset.forName("UTF-8"))
   }
+
+  def Buffer(s: String) = {
+    ChannelBuffers.wrappedBuffer(s.getBytes("UTF-8"))
+  }
 }
