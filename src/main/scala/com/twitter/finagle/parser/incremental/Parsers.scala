@@ -2,7 +2,6 @@ package com.twitter.finagle.parser.incremental
 
 import org.jboss.netty.buffer.{ChannelBuffers, ChannelBufferIndexFinder, ChannelBuffer}
 import com.twitter.finagle.util.DelimiterIndexFinder
-import com.twitter.finagle.parser.DecodingHelpers._
 import com.twitter.finagle.ParseException
 
 
@@ -10,10 +9,6 @@ object Parsers {
   def readUntil(delimiter: String) = new DelimiterParser(delimiter)
 
   val readLine = readUntil("\r\n")
-
-  val readDecimalInt = readLine map { decodeDecimalInt(_) }
-
-  val skipCRLF = skipBytes(2)
 
   def fail(err: ParseException) = new FailParser(err)
 
@@ -23,7 +18,7 @@ object Parsers {
 
   def readBytes(size: Int) = new FixedBytesParser(size)
 
-  def skipBytes(size: Int) = readBytes(size) map { _ => () }
+  def skipBytes(size: Int) = readBytes(size) flatMap unit
 
   def guard[T](matcher: String)(parser: Parser[T]) = {
     SwitchParser.stringMatchers(matcher -> parser)

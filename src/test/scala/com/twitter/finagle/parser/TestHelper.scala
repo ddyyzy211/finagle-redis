@@ -11,12 +11,17 @@ import com.twitter.finagle.parser.incremental._
 
 class ParserSpecification extends Specification {
   class RichParser[Out](p: Parser[Out]) {
-    def mustParse(input: String) = new ParserTest(p, input)
+    def mustParse(source: ChannelBuffer) = {
+      new ParserTest(p, source)
+    }
+
+    def mustParse(source: String) = {
+      new ParserTest(p, ChannelBuffers.wrappedBuffer(source.getBytes("UTF-8")))
+    }
   }
 
-  class ParserTest[Out](p: Parser[Out], sourceString: String) {
-    val source = ChannelBuffers.wrappedBuffer(sourceString.getBytes("UTF-8"))
-    val in     = ChannelBuffers.dynamicBuffer
+  class ParserTest[Out](p: Parser[Out], source: ChannelBuffer) {
+    val in = ChannelBuffers.dynamicBuffer
 
     @tailrec private def go(rv: ParseResult[Out]): ParseResult[Out] = rv match {
       case e: Throw       => e
@@ -29,11 +34,51 @@ class ParserSpecification extends Specification {
       }
     }
 
-    def andReturn(out: Out) = { go(Continue(p)) mustEqual Return(out); this }
-    def andThrow(err: ParseException) = { go(Continue(p)) mustEqual Throw(err); this }
-    def andContinue() = { go(Continue(p)) must haveClass[Continue[Out]]; this }
-    def readingBytes(c: Int) { in.readerIndex mustEqual c }
-    def leavingBytes(r: Int) { (source.writerIndex - in.readerIndex) mustEqual r }
+    // start with an empty buffer
+    lazy val rv = go(p.decode(in))
+
+    def andReturn(out: Out) = {
+      rv mustEqual Return(out)
+      this
+    }
+
+    def andThrow(err: ParseException) = {
+      rv mustEqual Throw(err)
+      this
+    }
+
+    def andThrow() = {
+      rv must haveClass[Throw]
+      this
+    }
+
+    def andThrow(msg: String) = {
+      rv match {
+        case Throw(err) => err.getMessage mustEqual msg
+        case _ => fail(p.toString +" did not throw.")
+      }
+      this
+    }
+
+    def andContinue(n: Parser[Out]) = {
+      rv mustEqual Continue(n)
+      this
+    }
+
+    def andContinue() = {
+      rv must haveClass[Continue[Out]]
+      this
+    }
+
+    def readingBytes(c: Int) {
+      rv
+      in.readerIndex mustEqual c
+    }
+
+    def leavingBytes(r: Int) {
+      rv
+      (source.writerIndex - in.readerIndex) mustEqual r
+    }
   }
 
   implicit def parser2Test[T](parser: Parser[T]) = new RichParser(parser)

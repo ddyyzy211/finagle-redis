@@ -2,6 +2,7 @@ package com.twitter.finagle.redis.protocol
 
 import org.jboss.netty.buffer.ChannelBuffer
 import com.twitter.finagle.parser.incremental._
+import com.twitter.finagle.parser.DecodingHelpers._
 
 
 sealed abstract class Reply
@@ -18,6 +19,8 @@ object ReplyDecoder {
   import Reply._
   import Parsers._
 
+  private val readDecimalInt = readLine map { decodeDecimalInt(_) }
+
   private val readStatusReply = readLine map { Status(_) }
 
   private val readErrorReply = readLine map { Error(_) }
@@ -28,7 +31,11 @@ object ReplyDecoder {
     if (size < 0) {
       const(Bulk(None))
     } else {
-      readBytes(size) map { bytes => Bulk(Some(bytes)) }
+      readBytes(size) flatMap { bytes =>
+        skipBytes(2) map { _ =>
+          Bulk(Some(bytes))
+        }
+      }
     }
   }
 

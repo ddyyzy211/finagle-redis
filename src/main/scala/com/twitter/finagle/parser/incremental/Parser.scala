@@ -15,9 +15,9 @@ case class Throw(err: ParseException) extends ParseResult[Nothing]
 abstract class Parser[+Out] {
   def decode(buffer: ChannelBuffer): ParseResult[Out]
 
-  def map[T](f: Out => T): Parser[T] = flatMap { t =>
+  def map[T](f: Out => T): Parser[T] = flatMap { out =>
     try {
-      new ConstParser(f(t))
+      new ConstParser(f(out))
     } catch {
       case e: ParseException => new FailParser(e)
     }
@@ -25,6 +25,10 @@ abstract class Parser[+Out] {
 
   def flatMap[T](f: Out => Parser[T]): Parser[T] = {
     new FlatMapParser(this, f)
+  }
+
+  def flatMap[T](next: Parser[T]): Parser[T] = {
+    new ChainedParser(this, next)
   }
 
   def orElse[T >: Out](other: Parser[T]): Parser[T] = {
@@ -52,18 +56,32 @@ abstract class UnsafeParser[+Out] extends Parser[Out] {
   override def isSafe = false
 }
 
-class FlatMapParser[A,+B](lhs: Parser[A], f: A => Parser[B]) extends UnsafeParser[B] {
-  def decode(buffer: ChannelBuffer) = {
-    lhs.decode(buffer) match {
-      case e: Throw       => e
-      case r: Return[A]   => f(r.ret).decode(buffer)
-      case c: Continue[A] => if (c.next eq lhs) {
-        Continue(this)
-      } else {
-        Continue(new FlatMapParser(c.next, f))
-      }
+abstract class AbstractChainedParser[A,+B] extends UnsafeParser[B] {
+  protected def left: Parser[A]
+  protected def right(ret: A): Parser[B]
+  protected def continued(next: Parser[A]): Parser[B]
+
+  def decode(buffer: ChannelBuffer) = left.decode(buffer) match {
+    case e: Throw       => e
+    case r: Return[A]   => right(r.ret).decode(buffer)
+    case c: Continue[A] => if (c.next eq left) {
+      Continue(this)
+    } else {
+      Continue(continued(c.next))
     }
   }
+}
+
+class ChainedParser[A,+B](protected val left: Parser[A], rhs: Parser[B])
+extends AbstractChainedParser[A,B] {
+  protected def right(ret: A) = rhs
+  protected def continued(next: Parser[A]) = new ChainedParser(next, rhs)
+}
+
+class FlatMapParser[A,+B](protected val left: Parser[A], f: A => Parser[B])
+extends AbstractChainedParser[A,B] {
+  protected def right(ret: A) = f(ret)
+  protected def continued(next: Parser[A]) = new FlatMapParser(next, f)
 }
 
 class OrElseParser[+Out](lhs: Parser[Out], rhs: Parser[Out]) extends Parser[Out] {
