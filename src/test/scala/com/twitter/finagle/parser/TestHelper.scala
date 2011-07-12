@@ -42,6 +42,11 @@ class ParserSpecification extends Specification {
       this
     }
 
+    def andReturn() = {
+      rv must haveClass[Return[Out]]
+      this
+    }
+
     def andThrow(err: ParseException) = {
       rv mustEqual Throw(err)
       this

@@ -16,6 +16,46 @@ object ParserSpec extends ParserSpecification {
     parser mustParse "one\r\ntwo\r\n" andReturn "one" readingBytes(5)
   }
 
+  "FixedBytesParser" in {
+    val parser = readBytes(513)
+    val input  = ChannelBuffers.dynamicBuffer
+
+    parser.decode(input) mustEqual Continue(parser)
+    for (i <- 1 until FixedBytesParser.ChunkSize) {
+      input.writeByte('x')
+    }
+
+    parser.decode(input) mustEqual Continue(parser)
+    input.readerIndex    mustEqual 0
+
+    input.writeByte('x')
+
+    val Continue(next) = parser.decode(input)
+
+    next must notBe(parser)
+    input.readerIndex mustEqual FixedBytesParser.ChunkSize
+  }
+
+  "ChainedParser" in {
+    val first  = readByte
+    val next   = readUnsignedByte
+    val parser = new ChainedParser(first, next)
+
+    parser mustParse ""   andContinue(parser)
+    parser mustParse "x"  andContinue(next)
+    parser mustParse "xx" andReturn()
+  }
+
+  "BacktrackingParser" in {
+    val parser = guard("xx") { Parsers.fail(new ParseException("whoops")) }
+    val backtracking = new BacktrackingParser(parser)
+
+    parser       mustParse "xxy" andThrow() readingBytes(2)
+    backtracking mustParse "xxy" andThrow() readingBytes(0)
+
+    parser orElse const("foo") mustParse "xxy" andReturn("foo") readingBytes(0)
+  }
+
   "Parsers" in {
     "readUntil" in {
       val parser = readUntil("baz") map asString

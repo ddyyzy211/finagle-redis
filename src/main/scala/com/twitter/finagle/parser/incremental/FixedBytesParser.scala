@@ -15,7 +15,7 @@ class FixedBytesParser(bytesLeft: Int, dataOpt: Option[ChannelBuffer]) extends P
   def decode(buffer: ChannelBuffer) = {
     val readable = buffer.readableBytes
 
-    if (readable > ChunkSize || readable >= bytesLeft) {
+    if (readable >= ChunkSize || readable >= bytesLeft) {
       val data = dataOpt getOrElse ChannelBuffers.buffer(bytesLeft)
 
       val newLeft = (bytesLeft - readable) match {
