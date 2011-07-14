@@ -3,7 +3,7 @@ package com.twitter.finagle.redis.protocol
 import org.jboss.netty.channel._
 import org.jboss.netty.buffer.{ChannelBuffers, ChannelBuffer}
 import org.jboss.netty.handler.codec.oneone.OneToOneEncoder
-import com.twitter.finagle.parser.EncodingHelpers._
+import com.twitter.finagle.parser.util.EncodingHelpers._
 
 
 object Command extends Enumeration {

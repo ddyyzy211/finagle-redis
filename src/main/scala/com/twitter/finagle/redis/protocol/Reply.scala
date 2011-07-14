@@ -2,7 +2,7 @@ package com.twitter.finagle.redis.protocol
 
 import org.jboss.netty.buffer.ChannelBuffer
 import com.twitter.finagle.parser.incremental._
-import com.twitter.finagle.parser.DecodingHelpers._
+import com.twitter.finagle.parser.util.DecodingHelpers._
 
 
 sealed abstract class Reply

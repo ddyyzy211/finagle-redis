@@ -1,14 +1,20 @@
 package com.twitter.finagle.parser.incremental
 
 import org.jboss.netty.buffer.{ChannelBuffers, ChannelBufferIndexFinder, ChannelBuffer}
-import com.twitter.finagle.util.DelimiterIndexFinder
+import com.twitter.finagle.parser.util._
 import com.twitter.finagle.ParseException
 
 
 object Parsers {
-  def readUntil(delimiter: String) = new DelimiterParser(delimiter)
+  def readTo(choices: String*) = {
+    new ConsumingDelimiterParser(AlternateMatcher(choices))
+  }
 
-  val readLine = readUntil("\r\n")
+  def readUntil(choices: String*) = {
+    new DelimiterParser(AlternateMatcher(choices))
+  }
+
+  val readLine = readTo("\r\n", "\n")
 
   def fail(err: ParseException) = new FailParser(err)
 
@@ -20,20 +26,31 @@ object Parsers {
 
   def skipBytes(size: Int) = readBytes(size) flatMap unit
 
-  def guard[T](matcher: String)(parser: Parser[T]) = {
-    SwitchParser.stringMatchers(matcher -> parser)
+  def guard[T](choices: String*)(parser: Parser[T]) = {
+    val g = new ConsumingMatchParser(AlternateMatcher(choices))
+    g flatMap parser
   }
 
   def choice[T](choices: (String, Parser[T])*) = {
     SwitchParser.stringMatchers(choices: _*)
   }
 
-  def times[T](total: Int)(decoder: Parser[T]) = {
+  def repeatTo[T](choices: String*)(parser: Parser[T]): Parser[List[T]] = {
+    val end = guard(choices: _*) { const[List[T]](Nil) }
+
+    def go(): Parser[List[T]] = {
+      end orElse (for (t <- parser; ts <- go) yield { t :: ts })
+    }
+
+    go()
+  }
+
+  def times[T](total: Int)(parser: Parser[T]) = {
     def go(i: Int, prev: List[T]): Parser[Seq[T]] = {
       if (i == total) {
         const(prev.reverse)
       } else {
-        decoder flatMap { rv =>
+        parser flatMap { rv =>
           go(i + 1, rv :: prev)
         }
       }

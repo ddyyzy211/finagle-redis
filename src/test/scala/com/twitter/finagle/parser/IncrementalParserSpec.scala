@@ -3,6 +3,7 @@ package com.twitter.finagle.parser.incremental
 import org.specs.Specification
 import org.jboss.netty.buffer.{ChannelBuffers, ChannelBuffer}
 import com.twitter.finagle.ParseException
+import com.twitter.finagle.parser.util.DecodingHelpers._
 import com.twitter.finagle.parser.test._
 
 
@@ -10,7 +11,7 @@ object ParserSpec extends ParserSpecification {
   import Parsers._
 
   "DelimiterParser" in {
-    val parser = readUntil("\r\n") map asString
+    val parser = readTo("\r\n") map asString
 
     parser mustParse "hello world\r\n" andReturn "hello world" leavingBytes(0)
     parser mustParse "one\r\ntwo\r\n" andReturn "one" readingBytes(5)
@@ -57,15 +58,15 @@ object ParserSpec extends ParserSpecification {
   }
 
   "Parsers" in {
-    "readUntil" in {
-      val parser = readUntil("baz") map asString
+    "readTo" in {
+      val parser = readTo("baz") map asString
       parser mustParse "foobazbarbaz" andReturn "foo" readingBytes(6)
       parser mustParse "foobar"       andContinue()
     }
 
     "readLine" in {
-      readLine map asString mustParse "before\rstill\nstill"          andContinue()
-      readLine map asString mustParse "before\rstill\nstill\r\nafter" leavingBytes(5)
+      readLine map asString mustParse "before\rstillstill"          andContinue()
+      readLine map asString mustParse "before\rstillstill\r\nafter" leavingBytes(5)
     }
 
     "fail" in {
@@ -229,6 +230,42 @@ object ParserSpec extends ParserSpecification {
       readFloat mustParse ""    andContinue()
       readFloat mustParse "byt" andContinue()
     }
+  }
 
+  def time[T](f: => T) = {
+    val s = System.currentTimeMillis
+    f
+    val e = System.currentTimeMillis
+    e - s
+  }
+
+  "performance" in {
+    val readInt = readLine map { decodeDecimalInt(_) }
+    val readBulk = guard("$") {
+      readInt flatMap { length =>
+        readBytes(length) flatMap { bytes =>
+          readBytes(2) flatMap {
+            const(bytes)
+          }
+        }
+      }
+    }
+
+    val test1 = guard("*") {
+      readInt flatMap { count =>
+        times(count) { readBulk }
+      }
+    }
+
+    val buf1 = ChannelBuffers.wrappedBuffer(("*5\r\n" + ("$6\r\nfoobar\r\n * 5")).getBytes)
+
+    for (x <- 1 to 100) {
+      val rv = time { for (i <- 1 to 100000) {
+        buf1.resetReaderIndex
+        test1.decode(buf1)
+      } }
+
+      println("test 1: "+ rv +" ("+ (rv / 100000.0) +")")
+    }
   }
 }

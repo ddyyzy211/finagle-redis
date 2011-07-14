@@ -1,5 +1,6 @@
-package com.twitter.finagle.parser
+package com.twitter.finagle.parser.util
 
+import java.nio.charset.Charset
 import org.jboss.netty.buffer.ChannelBuffer
 
 
@@ -15,6 +16,10 @@ object EncodingHelpers {
 
 
 object DecodingHelpers {
+  def decodeUTF8String(buf: ChannelBuffer) = {
+    buf.toString(Charset.forName("UTF-8"))
+  }
+
   def decodeDecimalInt(buf: ChannelBuffer) = {
     DecimalIntCodec.decode(buf)
   }

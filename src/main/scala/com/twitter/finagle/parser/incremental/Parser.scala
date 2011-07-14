@@ -84,6 +84,8 @@ extends AbstractChainedParser[A,B] {
   protected def continued(next: Parser[A]) = new FlatMapParser(next, f)
 }
 
+// parsec's alternative op only attempts its rhs if the left side
+// hasn't consumed any input. Allowing explicit backtracking only.
 class OrElseParser[+Out](lhs: Parser[Out], rhs: Parser[Out]) extends Parser[Out] {
   def decode(buffer: ChannelBuffer) = {
     lhs.decode(buffer) match {
