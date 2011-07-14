@@ -39,7 +39,7 @@ object Parsers {
     val end = guard(choices: _*) { const[List[T]](Nil) }
 
     def go(): Parser[List[T]] = {
-      end orElse (for (t <- parser; ts <- go) yield { t :: ts })
+      end or (for (t <- parser; ts <- go) yield { t :: ts })
     }
 
     go()

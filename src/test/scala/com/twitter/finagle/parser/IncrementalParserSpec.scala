@@ -54,7 +54,7 @@ object ParserSpec extends ParserSpecification {
     parser       mustParse "xxy" andThrow() readingBytes(2)
     backtracking mustParse "xxy" andThrow() readingBytes(0)
 
-    parser orElse const("foo") mustParse "xxy" andReturn("foo") readingBytes(0)
+    backtracking or const("foo") mustParse "xxy" andReturn("foo") readingBytes(0)
   }
 
   "Parsers" in {

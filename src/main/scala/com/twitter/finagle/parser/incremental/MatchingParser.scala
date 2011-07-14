@@ -54,7 +54,7 @@ object SwitchParser {
   }
 }
 
-class SwitchParser[+Out](choices: Array[(Matcher, Parser[Out])]) extends UnsafeParser[Out] {
+class SwitchParser[+Out](choices: Array[(Matcher, Parser[Out])]) extends Parser[Out] {
 
   val maxMatcherLength = (choices map { _._1.bytesNeeded }) ++ Array(0) max
 

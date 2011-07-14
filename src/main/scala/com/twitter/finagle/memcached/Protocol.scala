@@ -102,7 +102,7 @@ object ResponseDecoder {
 
   val readNumber = readLine map { bytes => Number(decodeDecimalInt(bytes)) }
 
-  val parser: Parser[Response] = readResponse orElse readNumber
+  val parser: Parser[Response] = readResponse or readNumber
 }
 
 

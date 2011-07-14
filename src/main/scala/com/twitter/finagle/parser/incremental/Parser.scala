@@ -15,7 +15,7 @@ case class Throw(err: ParseException) extends ParseResult[Nothing]
 abstract class Parser[+Out] {
   def decode(buffer: ChannelBuffer): ParseResult[Out]
 
-  def map[T](f: Out => T): Parser[T] = flatMap { out =>
+  def map[T](f: Out => T): Parser[T] = this into { out =>
     try {
       new ConstParser(f(out))
     } catch {
@@ -23,25 +23,21 @@ abstract class Parser[+Out] {
     }
   }
 
-  def flatMap[T](f: Out => Parser[T]): Parser[T] = {
+  def into[T](f: Out => Parser[T]): Parser[T] = {
     new FlatMapParser(this, f)
   }
 
-  def flatMap[T](next: Parser[T]): Parser[T] = {
+  def then[T](next: Parser[T]): Parser[T] = {
     new ChainedParser(this, next)
   }
 
-  def orElse[T >: Out](other: Parser[T]): Parser[T] = {
-    if (isSafe) {
-      new OrElseParser(this, other)
-    } else {
-      new BacktrackingParser(this) orElse other
-    }
-  }
+  def flatMap[T](f: Out => Parser[T]) = this into f
 
-  // if true, then it is safe to assume that either parsing cannot
-  // normally fail, or if it does, then it does not consume any bytes
-  def isSafe = true
+  def flatMap[T](next: Parser[T]) = this then next
+
+  def or[T >: Out](other: Parser[T]): Parser[T] = {
+    new OrElseParser(this, other)
+  }
 }
 
 class FailParser(err: ParseException) extends Parser[Nothing] {
@@ -52,11 +48,7 @@ class ConstParser[+Out](out: Out) extends Parser[Out] {
   def decode(buffer: ChannelBuffer) = Return(out)
 }
 
-abstract class UnsafeParser[+Out] extends Parser[Out] {
-  override def isSafe = false
-}
-
-abstract class AbstractChainedParser[A,+B] extends UnsafeParser[B] {
+abstract class AbstractChainedParser[A,+B] extends Parser[B] {
   protected def left: Parser[A]
   protected def right(ret: A): Parser[B]
   protected def continued(next: Parser[A]): Parser[B]
@@ -76,6 +68,11 @@ class ChainedParser[A,+B](protected val left: Parser[A], rhs: Parser[B])
 extends AbstractChainedParser[A,B] {
   protected def right(ret: A) = rhs
   protected def continued(next: Parser[A]) = new ChainedParser(next, rhs)
+
+  // override to be right-associative
+  override def then[T](other: Parser[T]) = {
+    new ChainedParser(left, rhs then other)
+  }
 }
 
 class FlatMapParser[A,+B](protected val left: Parser[A], f: A => Parser[B])
@@ -84,26 +81,24 @@ extends AbstractChainedParser[A,B] {
   protected def continued(next: Parser[A]) = new FlatMapParser(next, f)
 }
 
-// parsec's alternative op only attempts its rhs if the left side
-// hasn't consumed any input. Allowing explicit backtracking only.
 class OrElseParser[+Out](lhs: Parser[Out], rhs: Parser[Out]) extends Parser[Out] {
   def decode(buffer: ChannelBuffer) = {
+    val start = buffer.readerIndex
+
     lhs.decode(buffer) match {
-      case e: Throw         => rhs.decode(buffer)
-      case r: Return[Out]   => r
+      case e: Throw => if (start == buffer.readerIndex) rhs.decode(buffer) else e
+      case r: Return[Out] => r
       case c: Continue[Out] => if (c.next eq lhs) {
         Continue(this)
       } else {
-        Continue(c.next orElse rhs)
+        Continue(c.next or rhs)
       }
     }
   }
 
-  override def isSafe = rhs.isSafe
-
   // override to be right-associative
-  override def orElse[T >: Out](other: Parser[T]) = {
-    new OrElseParser(lhs, rhs orElse other)
+  override def or[T >: Out](other: Parser[T]) = {
+    new OrElseParser(lhs, rhs or other)
   }
 }
 
