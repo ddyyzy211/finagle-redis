@@ -257,7 +257,8 @@ object ParserSpec extends ParserSpecification {
       }
     }
 
-    val buf1 = ChannelBuffers.wrappedBuffer(("*5\r\n" + ("$6\r\nfoobar\r\n * 5")).getBytes)
+    val count = 100
+    val buf1 = ChannelBuffers.wrappedBuffer(("*"+count+"\r\n" + ("$6\r\nfoobar\r\n" * count)).getBytes)
 
     for (x <- 1 to 100) {
       val rv = time { for (i <- 1 to 100000) {
